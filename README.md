@@ -40,7 +40,7 @@ The server implements standard JSON-RPC 2.0 error mapping:
 
 | Code | Constant | Condition | Response Payload |
 |---|---|---|---|
-| `-32700` | `ParseError` | Malformed JSON received | Handled by protocol transport layer |
+| `-32700` | `ParseError` | Malformed JSON received | `{ code: -32700, message: "Parse error: Invalid JSON" }` |
 | `-32600` | `InvalidRequest` | Invalid JSON-RPC request structure | Handled by protocol transport layer |
 | `-32601` | `MethodNotFound` | Requested method is not registered | Handled by server router |
 | `-32602` | `InvalidParams` | Unknown tool name or Zod schema validation failure | `{ code: -32602, message: "Invalid params: ...", data: { issues: [...] } }` |
@@ -53,8 +53,10 @@ The server implements standard JSON-RPC 2.0 error mapping:
 
 In the Model Context Protocol, the client process communicates with the server via standard input/output streams. The stdout stream must remain exclusively reserved for valid JSON-RPC frames. Any stray output (such as startup banners, third-party loggers, or debugging prints) corrupts the JSON stream and breaks the client connection.
 
+In ECMAScript Modules (ESM), static import declarations are evaluated in source order prior to executing the importing module's body. By placing the console method redirections in an isolated module (`src/stderr-console.ts`) and importing it as the very first line of `src/index.ts`, `console.log`, `console.info`, `console.debug`, and `console.warn` are redirected to `process.stderr` before any downstream modules or dependencies are initialized. This prevents imported packages or submodules from leaking logs onto stdout during startup.
+
 To enforce STDIO isolation:
-1. `console.log`, `console.info`, `console.debug`, and `console.warn` are overridden at the entrypoint prior to other imports, redirecting all output to `process.stderr`.
+1. Console redirection lives in its own dedicated module (`src/stderr-console.ts`), imported first in `src/index.ts` to ensure execution before subsequent imports.
 2. A structured logger (`src/logger.ts`) writes exclusively via `process.stderr.write` using ISO timestamps and log severity levels.
 3. Uncaught exceptions and unhandled promise rejections are intercepted, formatted to stderr, and result in a clean non-zero exit.
 
@@ -77,15 +79,16 @@ mcp-customer-server/
 ├── .gitignore
 ├── README.md
 ├── src/
-│   ├── index.ts      # Server bootstrap and console overrides
-│   ├── logger.ts     # Stderr-only structured logger
-│   ├── schemas.ts    # Zod validation schemas
-│   ├── store.ts      # In-memory customer datastore
-│   ├── tools.ts      # Tool definitions and business handlers
-│   └── server.ts     # Low-level MCP server request routing
+│   ├── index.ts          # Server bootstrap
+│   ├── stderr-console.ts # First-imported console override
+│   ├── logger.ts         # Stderr-only structured logger
+│   ├── schemas.ts        # Zod validation schemas
+│   ├── store.ts          # In-memory customer datastore
+│   ├── tools.ts          # Tool definitions and business handlers
+│   └── server.ts         # Low-level MCP server request routing
 └── test/
-    ├── schemas.test.ts # Schema unit test suite
-    └── stdio.test.ts   # End-to-end STDIO JSON-RPC integration suite
+    ├── schemas.test.ts   # Schema unit test suite
+    └── stdio.test.ts     # End-to-end STDIO JSON-RPC integration suite
 ```
 
 ## Getting Started

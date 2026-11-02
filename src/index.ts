@@ -1,18 +1,4 @@
-import util from "node:util";
-
-console.log = (...args: unknown[]) => {
-  process.stderr.write(util.format(...args) + "\n");
-};
-console.info = (...args: unknown[]) => {
-  process.stderr.write(util.format(...args) + "\n");
-};
-console.debug = (...args: unknown[]) => {
-  process.stderr.write(util.format(...args) + "\n");
-};
-console.warn = (...args: unknown[]) => {
-  process.stderr.write(util.format(...args) + "\n");
-};
-
+import "./stderr-console.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { logger } from "./logger.js";
 import { createServer } from "./server.js";
