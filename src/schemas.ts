@@ -1,19 +1,13 @@
 import { z } from "zod";
 
 export const CustomerIdSchema = z
-  .string({
-    required_error: "customer_id is required",
-    invalid_type_error: "customer_id must be a string",
-  })
+  .string()
   .regex(/^CUST-\d{5}$/, {
     message: "customer_id must match format CUST-XXXXX with exactly 5 digits",
   });
 
 export const AmountSchema = z
-  .number({
-    required_error: "amount is required",
-    invalid_type_error: "amount must be a number",
-  })
+  .number()
   .refine((val) => Number.isFinite(val), {
     message: "amount must be a finite number",
   })
@@ -34,10 +28,7 @@ export const AmountSchema = z
   );
 
 export const ReasonSchema = z
-  .string({
-    required_error: "reason is required",
-    invalid_type_error: "reason must be a string",
-  })
+  .string()
   .refine((val) => val.trim().length >= 10, {
     message: "reason must be at least 10 characters long after trimming whitespace",
   })
