@@ -1,3 +1,4 @@
+import { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { store } from "./store.js";
 import {
   GetCustomerRecordInput,
@@ -62,12 +63,7 @@ export const TOOLS: ToolDefinition[] = [
   },
 ];
 
-export interface ToolResult {
-  content: Array<{ type: "text"; text: string }>;
-  isError?: boolean;
-}
-
-export function handleGetCustomerRecord(input: GetCustomerRecordInput): ToolResult {
+export function handleGetCustomerRecord(input: GetCustomerRecordInput): CallToolResult {
   const customer = store.getCustomer(input.customer_id);
   if (!customer) {
     return {
@@ -91,7 +87,7 @@ export function handleGetCustomerRecord(input: GetCustomerRecordInput): ToolResu
   };
 }
 
-export function handleTriggerRefund(input: TriggerRefundInput): ToolResult {
+export function handleTriggerRefund(input: TriggerRefundInput): CallToolResult {
   const refund = store.processRefund(input.customer_id, input.amount, input.reason);
   if (!refund) {
     return {
