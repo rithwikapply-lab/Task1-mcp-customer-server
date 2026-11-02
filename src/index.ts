@@ -1,5 +1,6 @@
 import "./stderr-console.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 import { logger } from "./logger.js";
 import { createServer } from "./server.js";
 
@@ -26,6 +27,23 @@ process.on("SIGTERM", () => {
 async function main(): Promise<void> {
   const server = createServer();
   const transport = new StdioServerTransport();
+
+  server.onerror = (error) => {
+    logger.error("Protocol error", error);
+    transport
+      .send({
+        jsonrpc: "2.0",
+        error: {
+          code: ErrorCode.ParseError,
+          message: "Parse error: Invalid JSON",
+        },
+        id: null as unknown as string,
+      })
+      .catch((sendErr) => {
+        logger.error("Failed to send parse error response", sendErr);
+      });
+  };
+
   await server.connect(transport);
   logger.info("Customer MCP server running on stdio transport");
 }

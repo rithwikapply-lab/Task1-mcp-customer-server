@@ -1,10 +1,10 @@
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import {
-  CallToolRequestSchema,
   ListToolsRequestSchema,
   ErrorCode,
   McpError,
 } from "@modelcontextprotocol/sdk/types.js";
+import { z } from "zod";
 import { logger } from "./logger.js";
 import {
   GetCustomerRecordInputSchema,
@@ -16,8 +16,33 @@ import {
   handleTriggerRefund,
 } from "./tools.js";
 
+const RelaxedCallToolRequestSchema = z.object({
+  method: z.literal("tools/call"),
+  params: z
+    .object({
+      name: z.string(),
+      arguments: z.unknown().optional(),
+    })
+    .passthrough(),
+});
+
+class CustomerServer extends Server {
+  override setRequestHandler(requestSchema: any, handler: any): void {
+    const shape = requestSchema?.shape;
+    const method = shape?.method?.value;
+    if (method === "tools/call") {
+      return Object.getPrototypeOf(Server.prototype).setRequestHandler.call(
+        this,
+        requestSchema,
+        handler
+      );
+    }
+    return super.setRequestHandler(requestSchema, handler);
+  }
+}
+
 export function createServer(): Server {
-  const server = new Server(
+  const server = new CustomerServer(
     {
       name: "mcp-customer-server",
       version: "1.0.0",
@@ -36,7 +61,7 @@ export function createServer(): Server {
     };
   });
 
-  server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  server.setRequestHandler(RelaxedCallToolRequestSchema as any, async (request: any) => {
     const { name, arguments: rawArgs } = request.params;
     logger.debug(`Received tools/call request for tool: ${name}`);
 
@@ -49,13 +74,17 @@ export function createServer(): Server {
               path: issue.path.join("."),
               message: issue.message,
             }));
-            const summary = issues
+            const resolvedIssues =
+              issues.length > 0
+                ? issues
+                : [{ path: "", message: "Invalid parameters" }];
+            const summary = resolvedIssues
               .map((i) => (i.path ? `${i.path}: ${i.message}` : i.message))
               .join("; ");
             throw new McpError(
               ErrorCode.InvalidParams,
               `Invalid params: ${summary}`,
-              { issues }
+              { issues: resolvedIssues }
             );
           }
           return handleGetCustomerRecord(parsed.data);
@@ -68,20 +97,35 @@ export function createServer(): Server {
               path: issue.path.join("."),
               message: issue.message,
             }));
-            const summary = issues
+            const resolvedIssues =
+              issues.length > 0
+                ? issues
+                : [{ path: "", message: "Invalid parameters" }];
+            const summary = resolvedIssues
               .map((i) => (i.path ? `${i.path}: ${i.message}` : i.message))
               .join("; ");
             throw new McpError(
               ErrorCode.InvalidParams,
               `Invalid params: ${summary}`,
-              { issues }
+              { issues: resolvedIssues }
             );
           }
           return handleTriggerRefund(parsed.data);
         }
 
         default:
-          throw new McpError(ErrorCode.InvalidParams, `Unknown tool: ${name}`);
+          throw new McpError(
+            ErrorCode.InvalidParams,
+            `Unknown tool: ${name}`,
+            {
+              issues: [
+                {
+                  path: "name",
+                  message: `Unknown tool: ${name}`,
+                },
+              ],
+            }
+          );
       }
     } catch (error) {
       if (error instanceof McpError) {
