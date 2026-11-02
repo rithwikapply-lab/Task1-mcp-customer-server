@@ -183,36 +183,32 @@ describe("STDIO JSON-RPC Integration", () => {
       params: {},
     });
 
-    // 10. Invalid call: bad customer_id (-32602)
-    const badIdRes = await sendRequest({
+    // 10. Invalid call: customer_id missing (-32602)
+    const missingIdRes = await sendRequest({
       jsonrpc: "2.0",
       id: 8,
       method: "tools/call",
       params: {
         name: "get_customer_record",
-        arguments: {
-          customer_id: "invalid-id",
-        },
+        arguments: {},
       },
     });
 
-    // 11. Invalid call: negative amount (-32602)
-    const negAmountRes = await sendRequest({
+    // 11. Invalid call: customer_id as number 12345 (-32602)
+    const numberIdRes = await sendRequest({
       jsonrpc: "2.0",
       id: 9,
       method: "tools/call",
       params: {
-        name: "trigger_refund",
+        name: "get_customer_record",
         arguments: {
-          customer_id: "CUST-10001",
-          amount: -25,
-          reason: "Damaged item replacement",
+          customer_id: 12345,
         },
       },
     });
 
-    // 12. Invalid call: short reason (-32602)
-    const shortReasonRes = await sendRequest({
+    // 12. Invalid call: amount as string "50" (-32602)
+    const stringAmountRes = await sendRequest({
       jsonrpc: "2.0",
       id: 10,
       method: "tools/call",
@@ -220,16 +216,73 @@ describe("STDIO JSON-RPC Integration", () => {
         name: "trigger_refund",
         arguments: {
           customer_id: "CUST-10001",
-          amount: 25,
-          reason: "short",
+          amount: "50",
+          reason: "Item damaged during shipment",
         },
       },
     });
 
-    // 13. Invalid call: unknown tool (-32602)
-    const unknownToolRes = await sendRequest({
+    // 13. Invalid call: amount missing (-32602)
+    const missingAmountRes = await sendRequest({
       jsonrpc: "2.0",
       id: 11,
+      method: "tools/call",
+      params: {
+        name: "trigger_refund",
+        arguments: {
+          customer_id: "CUST-10001",
+          reason: "Item damaged during shipment",
+        },
+      },
+    });
+
+    // 14. Invalid call: reason missing (-32602)
+    const missingReasonRes = await sendRequest({
+      jsonrpc: "2.0",
+      id: 12,
+      method: "tools/call",
+      params: {
+        name: "trigger_refund",
+        arguments: {
+          customer_id: "CUST-10001",
+          amount: 50,
+        },
+      },
+    });
+
+    // 15. Invalid call: reason 9 chars (-32602)
+    const shortReasonRes = await sendRequest({
+      jsonrpc: "2.0",
+      id: 13,
+      method: "tools/call",
+      params: {
+        name: "trigger_refund",
+        arguments: {
+          customer_id: "CUST-10001",
+          amount: 25,
+          reason: "123456789",
+        },
+      },
+    });
+
+    // 16. Invalid call: extra unknown key (-32602)
+    const extraKeyRes = await sendRequest({
+      jsonrpc: "2.0",
+      id: 14,
+      method: "tools/call",
+      params: {
+        name: "get_customer_record",
+        arguments: {
+          customer_id: "CUST-10001",
+          extra_unknown: "val",
+        },
+      },
+    });
+
+    // 17. Invalid call: unknown tool (-32602)
+    const unknownToolRes = await sendRequest({
+      jsonrpc: "2.0",
+      id: 15,
       method: "tools/call",
       params: {
         name: "unknown_custom_tool",
@@ -237,34 +290,20 @@ describe("STDIO JSON-RPC Integration", () => {
       },
     });
 
-    // 14. Invalid call: extra property on strict schema (-32602)
-    const extraPropRes = await sendRequest({
-      jsonrpc: "2.0",
-      id: 12,
-      method: "tools/call",
-      params: {
-        name: "get_customer_record",
-        arguments: {
-          customer_id: "CUST-10001",
-          unexpected_extra_property: 123,
-        },
-      },
-    });
-
-    // 15. Invalid call: arguments omitted (-32602)
+    // 18. Invalid call: arguments omitted (-32602)
     const omittedArgsRes = await sendRequest({
       jsonrpc: "2.0",
-      id: 13,
+      id: 16,
       method: "tools/call",
       params: {
         name: "get_customer_record",
       },
     });
 
-    // 16. Invalid call: arguments as array (-32602)
+    // 19. Invalid call: arguments as array (-32602)
     const arrayArgsRes = await sendRequest({
       jsonrpc: "2.0",
-      id: 14,
+      id: 17,
       method: "tools/call",
       params: {
         name: "get_customer_record",
@@ -340,13 +379,53 @@ describe("STDIO JSON-RPC Integration", () => {
     expect(unknownMethodRes.error).toBeDefined();
     expect(unknownMethodRes.error?.code).toBe(-32601);
 
-    // Assert all -32602 invalid param calls have non-empty issues array
+    // Assert specific human-readable messages for invalid parameter calls
+    expect(missingIdRes.error?.code).toBe(-32602);
+    expect(missingIdRes.error?.data?.issues).toEqual([
+      { path: "customer_id", message: "customer_id is required" },
+    ]);
+
+    expect(numberIdRes.error?.code).toBe(-32602);
+    expect(numberIdRes.error?.data?.issues).toEqual([
+      { path: "customer_id", message: "customer_id must be a string" },
+    ]);
+
+    expect(stringAmountRes.error?.code).toBe(-32602);
+    expect(stringAmountRes.error?.data?.issues).toEqual([
+      { path: "amount", message: "amount must be a number" },
+    ]);
+
+    expect(missingAmountRes.error?.code).toBe(-32602);
+    expect(missingAmountRes.error?.data?.issues).toEqual([
+      { path: "amount", message: "amount is required" },
+    ]);
+
+    expect(missingReasonRes.error?.code).toBe(-32602);
+    expect(missingReasonRes.error?.data?.issues).toEqual([
+      { path: "reason", message: "reason is required" },
+    ]);
+
+    expect(shortReasonRes.error?.code).toBe(-32602);
+    expect(shortReasonRes.error?.data?.issues).toEqual([
+      {
+        path: "reason",
+        message: "reason must be at least 10 characters long after trimming whitespace",
+      },
+    ]);
+
+    expect(extraKeyRes.error?.code).toBe(-32602);
+    expect(extraKeyRes.error?.data?.issues?.[0]?.path).toBe("extra_unknown");
+
+    // Assert every -32602 response has a non-empty error.data.issues array
     const invalidParamResponses = [
-      badIdRes,
-      negAmountRes,
+      missingIdRes,
+      numberIdRes,
+      stringAmountRes,
+      missingAmountRes,
+      missingReasonRes,
       shortReasonRes,
+      extraKeyRes,
       unknownToolRes,
-      extraPropRes,
       omittedArgsRes,
       arrayArgsRes,
     ];

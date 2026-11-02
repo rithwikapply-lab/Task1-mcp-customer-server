@@ -70,10 +70,13 @@ export function createServer(): Server {
         case "get_customer_record": {
           const parsed = GetCustomerRecordInputSchema.safeParse(rawArgs);
           if (!parsed.success) {
-            const issues = parsed.error.issues.map((issue) => ({
-              path: issue.path.join("."),
-              message: issue.message,
-            }));
+            const issues = parsed.error.issues.map((issue) => {
+              const path = issue.path.join(".") || (issue as any).keys?.join(".") || "";
+              return {
+                path,
+                message: issue.message,
+              };
+            });
             const resolvedIssues =
               issues.length > 0
                 ? issues
@@ -93,10 +96,13 @@ export function createServer(): Server {
         case "trigger_refund": {
           const parsed = TriggerRefundInputSchema.safeParse(rawArgs);
           if (!parsed.success) {
-            const issues = parsed.error.issues.map((issue) => ({
-              path: issue.path.join("."),
-              message: issue.message,
-            }));
+            const issues = parsed.error.issues.map((issue) => {
+              const path = issue.path.join(".") || (issue as any).keys?.join(".") || "";
+              return {
+                path,
+                message: issue.message,
+              };
+            });
             const resolvedIssues =
               issues.length > 0
                 ? issues
