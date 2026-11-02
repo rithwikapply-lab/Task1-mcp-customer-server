@@ -7,6 +7,10 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { logger } from "./logger.js";
 import {
+  GetCustomerRecordInputSchema,
+  TriggerRefundInputSchema,
+} from "./schemas.js";
+import {
   TOOLS,
   handleGetCustomerRecord,
   handleTriggerRefund,
@@ -33,16 +37,58 @@ export function createServer(): Server {
   });
 
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
-    const { name, arguments: args } = request.params;
+    const { name, arguments: rawArgs } = request.params;
     logger.debug(`Received tools/call request for tool: ${name}`);
 
-    switch (name) {
-      case "get_customer_record":
-        return handleGetCustomerRecord(args as any);
-      case "trigger_refund":
-        return handleTriggerRefund(args as any);
-      default:
-        throw new McpError(ErrorCode.InvalidParams, `Unknown tool: ${name}`);
+    try {
+      switch (name) {
+        case "get_customer_record": {
+          const parsed = GetCustomerRecordInputSchema.safeParse(rawArgs);
+          if (!parsed.success) {
+            const issues = parsed.error.issues.map((issue) => ({
+              path: issue.path.join("."),
+              message: issue.message,
+            }));
+            const summary = issues
+              .map((i) => (i.path ? `${i.path}: ${i.message}` : i.message))
+              .join("; ");
+            throw new McpError(
+              ErrorCode.InvalidParams,
+              `Invalid params: ${summary}`,
+              { issues }
+            );
+          }
+          return handleGetCustomerRecord(parsed.data);
+        }
+
+        case "trigger_refund": {
+          const parsed = TriggerRefundInputSchema.safeParse(rawArgs);
+          if (!parsed.success) {
+            const issues = parsed.error.issues.map((issue) => ({
+              path: issue.path.join("."),
+              message: issue.message,
+            }));
+            const summary = issues
+              .map((i) => (i.path ? `${i.path}: ${i.message}` : i.message))
+              .join("; ");
+            throw new McpError(
+              ErrorCode.InvalidParams,
+              `Invalid params: ${summary}`,
+              { issues }
+            );
+          }
+          return handleTriggerRefund(parsed.data);
+        }
+
+        default:
+          throw new McpError(ErrorCode.InvalidParams, `Unknown tool: ${name}`);
+      }
+    } catch (error) {
+      if (error instanceof McpError) {
+        throw error;
+      }
+      logger.error(`Internal error executing tool ${name}`, error);
+      throw new McpError(ErrorCode.InternalError, "Internal error");
     }
   });
 
