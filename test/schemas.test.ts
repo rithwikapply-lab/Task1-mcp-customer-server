@@ -76,6 +76,7 @@ describe("AmountSchema", () => {
     expect(AmountSchema.safeParse(0.001).success).toBe(false);
     expect(AmountSchema.safeParse(0.004).success).toBe(false);
     expect(AmountSchema.safeParse(0.005).success).toBe(false);
+    expect(AmountSchema.safeParse(Number.MIN_VALUE).success).toBe(false);
   });
 
   it("rejects NaN", () => {
