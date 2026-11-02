@@ -27,6 +27,16 @@ process.on("unhandledRejection", (reason: unknown) => {
   process.exit(1);
 });
 
+process.on("SIGINT", () => {
+  logger.info("Received SIGINT, shutting down");
+  process.exit(0);
+});
+
+process.on("SIGTERM", () => {
+  logger.info("Received SIGTERM, shutting down");
+  process.exit(0);
+});
+
 async function main(): Promise<void> {
   const server = createServer();
   const transport = new StdioServerTransport();
