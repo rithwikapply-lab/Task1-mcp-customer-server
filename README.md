@@ -43,9 +43,11 @@ The server implements standard JSON-RPC 2.0 error mapping:
 | `-32700` | `ParseError` | Malformed JSON received | `{ code: -32700, message: "Parse error: Invalid JSON" }` |
 | `-32600` | `InvalidRequest` | Invalid JSON-RPC request structure | Handled by protocol transport layer |
 | `-32601` | `MethodNotFound` | Requested method is not registered | Handled by server router |
-| `-32602` | `InvalidParams` | Unknown tool name or Zod schema validation failure | `{ code: -32602, message: "Invalid params: ...", data: { issues: [...] } }` |
-| `-32603` | `InternalError` | Unexpected runtime exception | `{ code: -32603, message: "Internal error" }` (details logged to stderr) |
+| `-32602` | `InvalidParams` | Unknown tool name or Zod schema validation failure | `{ code: -32602, message: "MCP error -32602: Invalid params: ...", data: { issues: [...] } }` |
+| `-32603` | `InternalError` | Unexpected runtime exception | `{ code: -32603, message: "MCP error -32603: Internal error" }` (details logged to stderr) |
 | N/A | Business Failure | Target customer ID not found in store | Regular result object with `isError: true` and text explanation |
+
+The SDK adds the "MCP error <code>: " prefix to wire error messages, so clients should rely on error.code and error.data.issues rather than parsing message strings.
 
 ## Architecture Decisions
 
