@@ -53,6 +53,10 @@ describe("AmountSchema", () => {
     expect(AmountSchema.safeParse(10000).success).toBe(true);
   });
 
+  it("accepts 0.01 minimum valid cent", () => {
+    expect(AmountSchema.safeParse(0.01).success).toBe(true);
+  });
+
   it("accepts floating point 0.1 + 0.2 representation", () => {
     expect(AmountSchema.safeParse(0.1 + 0.2).success).toBe(true);
   });
@@ -64,6 +68,14 @@ describe("AmountSchema", () => {
   it("rejects negative amounts", () => {
     expect(AmountSchema.safeParse(-0.01).success).toBe(false);
     expect(AmountSchema.safeParse(-50).success).toBe(false);
+  });
+
+  it("rejects sub-cent amounts", () => {
+    expect(AmountSchema.safeParse(1e-9).success).toBe(false);
+    expect(AmountSchema.safeParse(5e-9).success).toBe(false);
+    expect(AmountSchema.safeParse(0.001).success).toBe(false);
+    expect(AmountSchema.safeParse(0.004).success).toBe(false);
+    expect(AmountSchema.safeParse(0.005).success).toBe(false);
   });
 
   it("rejects NaN", () => {

@@ -26,10 +26,10 @@ export const AmountSchema = z
   .refine(
     (val) => {
       const cents = Math.round(val * 100);
-      return Math.abs(val * 100 - cents) < 1e-6;
+      return cents >= 1 && Math.abs(val * 100 - cents) < 1e-6;
     },
     {
-      message: "amount must have at most 2 decimal places",
+      message: "amount must have at most 2 decimal places and be at least 0.01",
     }
   );
 
